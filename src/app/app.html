@@ -1,0 +1,239 @@
+<div class="heisei-wrapper">
+  <header class="heisei-header">
+    <div class="marquee-banner">
+      <span>★゜・。。・゜゜・。。・゜☆ 祝!! ガチャデコへようこそ♪ 推し画像＆落書きで平成爆誕 ☆゜・。。・゜゜・。。・゜★</span>
+    </div>
+    <h1 class="heisei-title">
+      <span>🎰</span> ガチャデコ <span>💖</span>
+    </h1>
+    <p class="heisei-subtitle">〜ガチャガチャ×デコレーション！平成レトロお絵描きおもちゃ箱〜</p>
+  </header>
+
+  <main class="heisei-main">
+    <!-- 1. 描画キャンバス -->
+    <div class="canvas-frame">
+      <div class="status-bar">
+        <span class="badge" [class.eraser-active]="currentPen().isEraser">
+          {{ currentPen().isEraser ? '🧹 消しゴムモード中' : '🖊️ ' + currentPen().label }}
+        </span>
+        <span class="size-indicator">{{ selectedRatio().id }} / {{ currentPen().size }}px</span>
+      </div>
+
+      <canvas
+        #decoCanvas
+        [width]="selectedRatio().width"
+        [height]="selectedRatio().height"
+        (pointerdown)="onPointerDown($event)"
+        (pointermove)="onPointerMove($event)"
+        (pointerup)="onPointerUp($event)"
+        (pointercancel)="onPointerUp($event)"
+        class="deco-canvas"
+        [style.aspect-ratio]="selectedRatio().width + ' / ' + selectedRatio().height"
+      ></canvas>
+    </div>
+
+    <!-- コントロールパネル -->
+    <section class="control-panel">
+      <!-- 画像サイズの比率 -->
+      <div class="panel-group">
+        <div class="group-title">📐 画像サイズの比率</div>
+        <div class="ratio-grid">
+          @for (ratio of aspectRatios; track ratio.id) {
+            <button
+              type="button"
+              class="btn-ratio"
+              [class.selected-ratio]="selectedRatio().id === ratio.id"
+              (click)="selectAspectRatio(ratio)"
+            >
+              {{ ratio.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- ランダムデコペンガチャ -->
+      <div class="gacha-box">
+        <button
+          type="button"
+          class="btn-gacha"
+          [class.shake]="isGachaAnimating()"
+          (click)="rollRandomPen()"
+        >
+          🎲 ペンを変える（ガチャデコ抽選！）✨
+        </button>
+        <p class="gacha-hint">※ガチャでランダム出現！下から自分で選ぶこともできるヨ♪</p>
+      </div>
+
+      <!-- ペンの種類＆平成配色を手動で選ぶ -->
+      <div class="panel-group">
+        <div class="group-title">✏️ ペンを自分で選ぶ（種類＆平成コンボ）</div>
+
+        <div class="pen-type-grid">
+          @for (item of penTypes; track item.type) {
+            <button
+              type="button"
+              class="btn-pen-type"
+              [class.selected-pen]="!currentPen().isEraser && currentPen().type === item.type"
+              (click)="selectPenType(item.type)"
+            >
+              {{ item.shortLabel }}
+            </button>
+          }
+        </div>
+
+        <div class="sub-label">★ 平成配色コンボを選ぶ：</div>
+        <div class="palette-grid">
+          @for (palette of heiseiPalettes; track palette.name) {
+            <button
+              type="button"
+              class="btn-palette"
+              [class.selected-palette]="!currentPen().isEraser && selectedPaletteName() === palette.name"
+              (click)="selectHeiseiPalette(palette)"
+            >
+              <span class="swatch" [style.background]="palette.primary"></span>
+              <span class="swatch" [style.background]="palette.secondary"></span>
+              <span class="palette-name">{{ palette.name }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- ペンの色設定＆太さ設定 -->
+      <div class="panel-group">
+        <div class="group-title">🎨 メインカラー微調整＆ペンの太さ</div>
+
+        <div class="color-palette">
+          @for (color of presetColors; track color) {
+            <button
+              type="button"
+              class="color-chip"
+              [style.background-color]="color"
+              [class.selected]="!currentPen().isEraser && currentPen().primaryColor === color"
+              (click)="setPenColor(color)"
+              [attr.aria-label]="color"
+            ></button>
+          }
+
+          <label class="custom-color-btn" title="好きな色を選ぶ">
+            🌈
+            <input
+              type="color"
+              [value]="currentPen().primaryColor"
+              (input)="setPenColor($any($event.target).value)"
+            />
+          </label>
+        </div>
+
+        <div class="slider-row">
+          <span>細</span>
+          <input
+            type="range"
+            min="2"
+            max="32"
+            [value]="currentPen().size"
+            (input)="setPenSize($event)"
+            class="heisei-slider"
+          />
+          <span>太 ({{ currentPen().size }})</span>
+        </div>
+      </div>
+
+      <!-- 消しゴム＆元に戻す・やり直す -->
+      <div class="panel-group action-row">
+        <button
+          type="button"
+          class="btn-heisei"
+          [class.active-tool]="currentPen().isEraser"
+          (click)="toggleEraser()"
+        >
+          🧹 消しゴム
+        </button>
+
+        <button
+          type="button"
+          class="btn-heisei"
+          [disabled]="!canUndo()"
+          (click)="undo()"
+        >
+          ↩️ 元に戻す
+        </button>
+
+        <button
+          type="button"
+          class="btn-heisei"
+          [disabled]="!canRedo()"
+          (click)="redo()"
+        >
+          ↪️ やり直す
+        </button>
+
+        <button
+          type="button"
+          class="btn-heisei btn-danger"
+          [disabled]="!canUndo()"
+          (click)="clearAll()"
+        >
+          💣 全消し
+        </button>
+      </div>
+
+      <!-- 背景変更＆画像アップロード -->
+      <div class="panel-group">
+        <div class="group-title">🖼️ 背景チェンジ＆画像に落書き（落書きは消えないヨ！）</div>
+
+        <div class="upload-box">
+          <label class="btn-upload">
+            📷 好きな画像をアップして落書きする
+            <input
+              type="file"
+              accept="image/*"
+              (change)="onImageUpload($event)"
+            />
+          </label>
+
+          @if (uploadedImage()) {
+            <div class="uploaded-info">
+              <span class="uploaded-name">🖼️ 使用中: {{ uploadedFileName() }}</span>
+              <button type="button" class="btn-clear-img" (click)="clearUploadedImage()">
+                背景に戻す
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="bg-grid">
+          @for (bg of backgrounds; track bg.label) {
+            <button
+              type="button"
+              class="btn-bg"
+              [class.selected-bg]="!uploadedImage() && currentBg().type === bg.type && currentBg().label === bg.label"
+              (click)="selectBackground(bg)"
+            >
+              {{ bg.label }}
+            </button>
+          }
+
+          <label class="btn-bg custom-bg-picker">
+            🎨 単色指定
+            <input
+              type="color"
+              [value]="currentBg().primaryColor"
+              (input)="changeSolidBgColor($any($event.target).value)"
+            />
+          </label>
+        </div>
+      </div>
+
+      <!-- 画像保存ボタン -->
+      <div class="save-box">
+        <button type="button" class="btn-save" (click)="saveAsPng()">
+          💾 完成！PNG画像を保存する☆
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="heisei-footer">
+    <p>☆*:.｡. o(≧▽≦)o .｡.:*☆ Powered by ガチャデコ</p>
+  </footer>
+</div>
