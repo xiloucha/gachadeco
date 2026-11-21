@@ -380,4 +380,19 @@
     font-weight: bold;
     color: #660066;
   }
+  .heisei-wrapper {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  .heisei-header,
+  .status-bar,
+  .panel-group,
+  button,
+  label {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
   
